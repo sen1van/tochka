@@ -5,11 +5,13 @@ float: 1.2345 (not used)
 string: "Ivan Ivanov"
 time: "2025-01-01T00:00:00Z"
 
-
+```
 GET /api/v0/ping
 ANSW:
   204 No Content
+```
   
+ ``` 
 POST /api/v0/telemetry
 BODY:
   json: {
@@ -20,7 +22,9 @@ BODY:
   }
 ANSW:
   201 Created
+```
 
+```
 GET /api/v0/telemetry?limit={last N results by timestamp, default 20}&offset={offset, default 0}
 ANSW:
   json: {
@@ -34,8 +38,9 @@ ANSW:
         },
     ...]
     }
+```
 
-
+```
 GET /api/v0/sensors/{sensor_id}/telemetry?limit={last N results by timestamp, default 20}&offset={offset, default 0}
 ANSW:
   json: {
@@ -49,8 +54,9 @@ ANSW:
         },
     ...]
     }
+```
 
-
+```
 POST /api/v0/sensors
 BODY:
   json: {
@@ -59,8 +65,9 @@ BODY:
   }
 ANSW:
   201 Created
+```
 
-
+```
 PATCH /api/v0/sensors/{sensor_id}
 BODY:
   json: {
@@ -68,13 +75,15 @@ BODY:
   }
 ANSW:
   204 No Content
+```
 
-
+```
 DELETE /api/v0/sensors/{sensor_id}
 ANSW:
   204 No Content
+```
 
-
+```
 GET /api/v0/sensors
 ANSW:
   json: [
@@ -84,3 +93,4 @@ ANSW:
       "last_seen": "2025-01-01T00:00:00Z"
     }
   ]
+```
