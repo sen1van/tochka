@@ -7,8 +7,10 @@ import (
 	"tochka/database"
 )
 
+type contextKey string
+
 const (
-	DBContextKey = "db"
+	DBContextKey contextKey = "db"
 )
 
 var ErrDBNotFound = errors.New("database not found in context")
@@ -28,5 +30,6 @@ func GetDB(r *http.Request) (*database.DB, error) {
 	if !ok {
 		return nil, ErrDBNotFound
 	}
+
 	return value, nil
 }

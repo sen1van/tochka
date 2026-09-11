@@ -1,13 +1,14 @@
 package middlewares
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
 
 type responseWriter struct {
 	http.ResponseWriter
+
 	status int
 }
 
@@ -18,12 +19,12 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rw, r)
 
-		log.Printf(
-			"method=%s path=%s status=%d duration=%v",
-			r.Method,
-			r.URL.Path,
-			rw.status,
-			time.Since(start),
+		slog.Info(
+			"log",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.Int("status", rw.status),
+			slog.Duration("duration", time.Since(start)),
 		)
 	})
 }

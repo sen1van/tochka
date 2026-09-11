@@ -20,11 +20,11 @@ const (
 )
 
 var (
-	ErrBadJson      = errors.New("Bad JSON")
-	ErrInvalidField = errors.New("Invalid field")
-	ErrTooLarge     = fmt.Errorf("Request body is too large (max %d bytes)", MaxBodySize)
-	ErrValidation   = errors.New("Validation error")
-	ErrDeveloper    = errors.New("Developer error")
+	ErrBadJson      = errors.New("bad JSON")
+	ErrInvalidField = errors.New("invalid field")
+	ErrTooLarge     = fmt.Errorf("request body is too large (max %d bytes)", MaxBodySize)
+	ErrValidation   = errors.New("validation error")
+	ErrDeveloper    = errors.New("developer error")
 )
 
 func IsUnknownFieldError(err error) (string, bool) {
@@ -48,12 +48,21 @@ func SendJSON(w http.ResponseWriter, status int, data any) {
 	if err != nil {
 		slog.Error("failed to encode JSON", "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": "internal server error"}`))
+
+		_, err = w.Write([]byte(`{"error": "internal server error"}`))
+		if err != nil {
+			slog.Error("failed to write error response", "error", err)
+		}
+
 		return
 	}
 
 	w.WriteHeader(status)
-	w.Write(bytes)
+
+	_, err = w.Write(bytes)
+	if err != nil {
+		slog.Error("failed to write JSON response", "error", err)
+	}
 }
 
 func SendError(w http.ResponseWriter, status int, message string) {
@@ -69,7 +78,7 @@ func validateFields(dst any) error {
 
 	typ := val.Type()
 
-	for i := 0; i < val.NumField(); i++ {
+	for i := range val.NumField() {
 		fieldVal := val.Field(i)
 		fieldType := typ.Field(i)
 
@@ -80,14 +89,17 @@ func validateFields(dst any) error {
 
 			if fieldVal.IsNil() {
 				jsonTag := fieldType.Tag.Get("json")
+
 				jsonName, _, _ := strings.Cut(jsonTag, ",")
 				if jsonName == "" || jsonName == "-" {
 					jsonName = fieldType.Name
 				}
-				return fmt.Errorf("field '%s' is required", jsonName)
+
+				return fmt.Errorf("%w: field '%s' is required", ErrValidation, jsonName)
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -98,18 +110,15 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	decoder.DisallowUnknownFields()
 
 	v := reflect.ValueOf(dst)
-	if v.Kind() != reflect.Pointer {
-		return fmt.Errorf("%w: destination is not a pointer", ErrDeveloper)
-	}
-	if v.IsNil() {
-		return fmt.Errorf("%w: destination is a nil pointer", ErrDeveloper)
+	if v.Kind() != reflect.Pointer || v.IsNil() {
+		return fmt.Errorf("%w: destination is not a pointer or is nil", ErrDeveloper)
 	}
 
 	err := decoder.Decode(dst)
 	if err != nil {
 		var syntaxError *json.SyntaxError
+
 		var unmarshalTypeError *json.UnmarshalTypeError
-		var maxBytesError *http.MaxBytesError
 
 		switch {
 		case errors.As(err, &syntaxError):
@@ -118,19 +127,13 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 			return fmt.Errorf("%w, incorrect type for field %s", ErrInvalidField, unmarshalTypeError.Field)
 		case errors.Is(err, io.EOF):
 			return fmt.Errorf("%w, request body is empty", ErrBadJson)
-		case errors.As(err, &maxBytesError):
-			return ErrTooLarge
 		default:
 			if fieldName, ok := IsUnknownFieldError(err); ok {
 				return fmt.Errorf("%w: unknown field %s", ErrBadJson, fieldName)
 			}
+
 			return fmt.Errorf("%w, some unknown error", ErrBadJson)
 		}
-	}
-
-	err = validateFields(dst)
-	if err != nil {
-		return fmt.Errorf("%w: %v", ErrValidation, err)
 	}
 
 	err = decoder.Decode(&struct{}{})
@@ -143,14 +146,21 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 
 func ReadJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 	err := decodeJSON(w, r, dst)
+	if err == nil {
+		err = validateFields(dst)
+	}
+
 	if err != nil {
 		if errors.Is(err, ErrDeveloper) {
 			SendError(w, http.StatusInternalServerError, "Some developer error")
+
 			return false
 		} else {
 			SendError(w, http.StatusBadRequest, err.Error())
+
 			return false
 		}
 	}
+
 	return true
 }

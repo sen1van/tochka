@@ -1,0 +1,48 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - depguard
+    - exhaustruct
+    - wsl
+    - ireturn
+    - funcorder
+    - tagalign
+    - exhaustruct_v5
+    - gomodguard
+  settings:
+      wrapcheck:
+        ignore-sigs:
+          - func (*github.com/labstack/echo/v5.Context).JSON(code int, i any) (err error)
+          - func (*github.com/labstack/echo/v5.Context).NoContent(code int) error
+          - fmt.Errorf
+          - errors.New
+          - func (github.com/gorilla/sessions.Store).Get(r *net/http.Request, name string) (*github.com/gorilla/sessions.Session, error)
+      varnamelen:
+        ignore-names:
+          - c
+          - db
+          - rw
+          - r
+          - w
+      tagliatelle:
+        case:
+          rules:
+            json: snake
+            yaml: snake
+            env: upperSnake
+      revive:
+        rules:
+          - name: exported
+            severity: warning
+            disabled: true
+
+  formatters:
+    enable:
+      - gci
+      - gofmt
+      - gofumpt
+      - goimports
+      - golines
+      - swaggo

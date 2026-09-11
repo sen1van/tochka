@@ -5,10 +5,11 @@ import (
 )
 
 func GetApiHandler() http.Handler {
-	h := http.NewServeMux()
+	handler := http.NewServeMux()
 
-	h.HandleFunc("GET /ping", getPing)
-	h.HandleFunc("POST /telemetry", postTelemetry)
+	handler.HandleFunc("GET /ping", getPing)
+	handler.HandleFunc("POST /telemetry", postTelemetry)
+	handler.HandleFunc("GET /telemetry", getTelemetry)
 
-	return h
+	return handler
 }

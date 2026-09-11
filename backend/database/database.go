@@ -1,9 +1,16 @@
 package database
 
 import (
+	"context"
 	"database/sql"
+	"log/slog"
+	"time"
 
 	_ "modernc.org/sqlite"
+)
+
+const (
+	defaultTimeout = 5 * time.Second
 )
 
 type DB struct {
@@ -15,14 +22,29 @@ func NewDB(link string) *DB {
 	if err != nil {
 		panic(err)
 	}
-	d := &DB{db: db}
 
-	d.createDeviceTable()
-	d.createTelemetryTable()
+	newDB := &DB{db: db}
 
-	return d
+	err = newDB.createDeviceTable()
+	if err != nil {
+		panic(err)
+	}
+
+	err = newDB.createTelemetryTable()
+	if err != nil {
+		panic(err)
+	}
+
+	return newDB
 }
 
-func (d *DB) Close() error {
-	return d.db.Close()
+func (d *DB) Close() {
+	slog.Error("closing database", "error", d.db.Close())
+}
+
+func timeoutContext() context.Context {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+
+	return ctx
 }
