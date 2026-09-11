@@ -1,18 +1,19 @@
 # API
 
-int: 12345
-float: 1.2345 (not used)
-string: "Ivan Ivanov"
-time: "2025-01-01T00:00:00Z"
+типы данных обозначены:
+- int: 12345
+- float: 1.2345 (not used)
+- string: "Ivan Ivanov"
+- time: "2025-01-01T00:00:00Z" [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601)
 
 ```
-GET /api/v0/ping
+GET /api/ping
 ANSW:
-  204 No Content
+  200 {"message": "pong"}
 ```
   
  ``` 
-POST /api/v0/telemetry
+POST /api/telemetry
 BODY:
   json: {
     "sensor_id": 12345,
@@ -25,7 +26,7 @@ ANSW:
 ```
 
 ```
-GET /api/v0/telemetry?limit={last N results by timestamp, default 20}&offset={offset, default 0}
+GET /api/telemetry?limit={results by timestamp, default 20}&offset={offset, default 0}
 ANSW:
   json: {
     "total": 12345, 
@@ -41,7 +42,7 @@ ANSW:
 ```
 
 ```
-GET /api/v0/sensors/{sensor_id}/telemetry?limit={last N results by timestamp, default 20}&offset={offset, default 0}
+GET /api/sensors/{sensor_id}/telemetry?limit={results by timestamp, default 20}&offset={offset, default 0}
 ANSW:
   json: {
     "total": 12345, 
@@ -57,7 +58,7 @@ ANSW:
 ```
 
 ```
-POST /api/v0/sensors
+POST /api/sensors
 BODY:
   json: {
     "sensor_id": 12345,
@@ -68,7 +69,7 @@ ANSW:
 ```
 
 ```
-PATCH /api/v0/sensors/{sensor_id}
+PUT /api/sensors/{sensor_id}
 BODY:
   json: {
     "name": "ivan ivanov"
@@ -78,19 +79,22 @@ ANSW:
 ```
 
 ```
-DELETE /api/v0/sensors/{sensor_id}
+DELETE /api/sensors/{sensor_id}
 ANSW:
   204 No Content
 ```
 
 ```
-GET /api/v0/sensors
+GET /api/sensors
 ANSW:
-  json: [
-    {
-      "sensor_id": 12345,
-      "name": "Ivan Ivanov",
-      "last_seen": "2025-01-01T00:00:00Z"
-    }
-  ]
+  json: {
+    "total": 12345,
+    "data": [
+      {
+        "sensor_id": 12345,
+        "name": "Ivan Ivanov",
+        "last_seen": "2025-01-01T00:00:00Z"
+      }
+    ]
+  }
 ```

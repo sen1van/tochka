@@ -16,18 +16,11 @@ func NewDB(link string) *DB {
 		panic(err)
 	}
 	d := &DB{db: db}
-	d.Connect(link)
 
 	d.createDeviceTable()
-	d.createPingTable()
+	d.createTelemetryTable()
 
 	return d
-}
-
-func (d *DB) Connect(link string) error {
-	var err error
-	d.db, err = sql.Open("sqlite", link)
-	return err
 }
 
 func (d *DB) Close() error {

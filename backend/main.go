@@ -3,21 +3,22 @@ package main
 import (
 	"net/http"
 	"tochka/database"
-	"tochka/handlers"
+	"tochka/handlers/api"
 	"tochka/middlewares"
 )
 
 func main() {
 	db := database.NewDB("db.sqlite")
+	defer db.Close()
 
-	http.HandleFunc("/ping", handlers.Ping) // GET POST
+	mux := http.NewServeMux()
 
-	api := http.NewServeMux()
-	api.HandleFunc("/", handlers.APIHandler)
+	apiHandler := api.GetApiHandler()
+	apiHandler = middlewares.AuthMiddleware(apiHandler)
+	apiHandler = middlewares.APIMiddleware(apiHandler, db)
+	mux.Handle("/api/", http.StripPrefix("/api", apiHandler))
 
-	http.Handle("/api/", middlewares.APIMiddleware(api, db))
-
-	err = http.ListenAndServe("0.0.0.0:8080", nil)
+	err := http.ListenAndServe(":8080", middlewares.LoggingMiddleware(mux))
 	if err != nil {
 		panic(err)
 	}

@@ -1,0 +1,221 @@
+openapi: 3.0.3
+info:
+  title: Telemetry and Sensors API
+  version: 1.0.0
+  description: API для работы с датчиками и телеметрией.
+paths:
+  /api/ping:
+    get:
+      summary: Проверка работоспособности (Ping)
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "pong"
+
+  /api/telemetry:
+    post:
+      summary: Отправка телеметрии
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryItem'
+      responses:
+        '201':
+          description: Created
+
+    get:
+      summary: Получение общего списка телеметрии
+      parameters:
+        - name: limit
+          in: query
+          description: Количество результатов по timestamp
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          description: Смещение
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 12345
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TelemetryItem'
+
+  /api/sensors/{sensor_id}/telemetry:
+    get:
+      summary: Получение телеметрии по конкретному датчику
+      parameters:
+        - name: sensor_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 12345
+        - name: limit
+          in: query
+          description: Количество результатов по timestamp
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          description: Смещение
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 12345
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TelemetryItem'
+
+  /api/sensors:
+    post:
+      summary: Создание нового датчика
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sensor_id
+                - name
+              properties:
+                sensor_id:
+                  type: integer
+                  example: 12345
+                name:
+                  type: string
+                  example: "ivan ivanov"
+      responses:
+        '201':
+          description: Created
+
+    get:
+      summary: Получение списка всех датчиков
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 12345
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        sensor_id:
+                          type: integer
+                          example: 12345
+                        name:
+                          type: string
+                          example: "Ivan Ivanov"
+                        last_seen:
+                          type: string
+                          format: date-time
+                          example: "2025-01-01T00:00:00Z"
+
+  /api/sensors/{sensor_id}:
+    put:
+      summary: Обновление данных датчика
+      parameters:
+        - name: sensor_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 12345
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: "ivan ivanov"
+      responses:
+        '204':
+          description: No Content
+
+    delete:
+      summary: Удаление датчика
+      parameters:
+        - name: sensor_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 12345
+      responses:
+        '204':
+          description: No Content
+
+components:
+  schemas:
+    TelemetryItem:
+      type: object
+      required:
+        - sensor_id
+        - try_number
+        - value
+        - timestamp
+      properties:
+        sensor_id:
+          type: integer
+          example: 12345
+        try_number:
+          type: integer
+          example: 12345
+        value:
+          type: integer
+          example: 12345
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00Z"
