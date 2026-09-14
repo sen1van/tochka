@@ -26,6 +26,7 @@ linters:
           - rw
           - r
           - w
+          - id
       tagliatelle:
         case:
           rules:

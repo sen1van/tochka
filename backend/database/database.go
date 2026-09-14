@@ -25,7 +25,7 @@ func NewDB(link string) *DB {
 
 	newDB := &DB{db: db}
 
-	err = newDB.createDeviceTable()
+	err = newDB.createSensorTable()
 	if err != nil {
 		panic(err)
 	}
@@ -42,9 +42,8 @@ func (d *DB) Close() {
 	slog.Error("closing database", "error", d.db.Close())
 }
 
-func timeoutContext() context.Context {
+func timeoutContext() (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
-	defer cancel()
 
-	return ctx
+	return ctx, cancel
 }

@@ -9,7 +9,7 @@ import (
 	"tochka/middlewares"
 )
 
-type telemetryReq struct {
+type newTelemetryRequest struct {
 	SensorID  *int       `json:"sensor_id" required:"true"`
 	TryNumber *int       `json:"try_number" required:"true"`
 	Value     *int       `json:"value" required:"true"`
@@ -22,7 +22,7 @@ type telemetryResp struct {
 }
 
 func postTelemetry(w http.ResponseWriter, r *http.Request) {
-	var telemetry telemetryReq
+	var telemetry newTelemetryRequest
 
 	if !handlers.ReadJSON(w, r, &telemetry) {
 		return
@@ -35,7 +35,7 @@ func postTelemetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.NewTelemetry(*telemetry.SensorID, *telemetry.TryNumber, *telemetry.Timestamp, r.Header.Get("Authorization"))
+	err = db.NewTelemetry(*telemetry.SensorID, *telemetry.TryNumber, *telemetry.Timestamp, middlewares.GetAuthToken(r))
 	if err != nil {
 		handlers.SendError(w, http.StatusInternalServerError, err.Error())
 
@@ -66,12 +66,17 @@ func getTelemetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pings, total, err := db.GetTelemetry(r.Header.Get("Authorization"), limit, offset)
+	pings, total, err := db.GetTelemetry(middlewares.GetAuthToken(r), limit, offset)
 	if err != nil {
 		handlers.SendError(w, http.StatusInternalServerError, err.Error())
 
 		return
 	}
 
-	handlers.SendJSON(w, http.StatusOK, telemetryResp{Total: total, Data: pings})
+	resp := telemetryResp{
+		Total: total,
+		Data:  pings,
+	}
+
+	handlers.SendJSON(w, http.StatusOK, resp)
 }
