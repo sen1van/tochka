@@ -10,13 +10,13 @@ import (
 )
 
 type newTelemetryRequest struct {
-	SensorID  *int       `json:"sensor_id" required:"true"`
-	TryNumber *int       `json:"try_number" required:"true"`
+	SensorID  *int       `json:"sensorId" required:"true"`
+	TryNumber *int       `json:"tryNumber" required:"true"`
 	Value     *int       `json:"value" required:"true"`
 	Timestamp *time.Time `json:"timestamp" required:"true"`
 }
 
-type telemetryResp struct {
+type telemetryResponse struct {
 	Total int                  `json:"total"`
 	Data  []database.Telemetry `json:"data"`
 }
@@ -35,7 +35,12 @@ func postTelemetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.NewTelemetry(*telemetry.SensorID, *telemetry.TryNumber, *telemetry.Timestamp, middlewares.GetAuthToken(r))
+	err = db.NewTelemetry(
+		*telemetry.SensorID,
+		*telemetry.TryNumber,
+		*telemetry.Timestamp,
+		*telemetry.Value,
+		middlewares.GetAuthToken(r))
 	if err != nil {
 		handlers.SendError(w, http.StatusInternalServerError, err.Error())
 
@@ -73,7 +78,7 @@ func getTelemetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := telemetryResp{
+	resp := telemetryResponse{
 		Total: total,
 		Data:  pings,
 	}

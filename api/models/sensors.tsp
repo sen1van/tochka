@@ -1,11 +1,13 @@
 import "@typespec/http";
 
+import "./telemetry.tsp";
+
 using Http;
 
 model SensorData {
   sensorId: int64,
   name: string,
-  lastSeen: utcDateTime,
+  lastTelemetry: TelemetryData | null,
 }
 
 model CreateSensorRequest {

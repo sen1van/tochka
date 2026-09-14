@@ -1,6 +1,6 @@
-.PHONY: default backend api
+.PHONY: default backend api frontend
 
-default: backend api
+default: backend api frontend
 
 backend:
 	cd backend && make
@@ -8,6 +8,8 @@ backend:
 api:
 	cd api && make
 
+frontend:
+	cd frontend && make
 
 run: default
 	cd builds && ./backend

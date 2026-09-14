@@ -1,19 +1,26 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
+	"tochka/database"
 	"tochka/handlers"
 	"tochka/middlewares"
 )
 
 type newSensorRequest struct {
-	SensorID *int    `json:"sensor_id" required:"true"`
+	SensorID *int    `json:"sensorId" required:"true"`
 	Name     *string `json:"name" required:"true"`
 }
 
 type updateSensorRequest struct {
 	Name *string `json:"name" required:"true"`
+}
+
+type sensorsResponse struct {
+	Total int               `json:"total"`
+	Data  []database.Sensor `json:"data"`
 }
 
 func postSensor(w http.ResponseWriter, r *http.Request) {
@@ -41,6 +48,19 @@ func postSensor(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSensors(w http.ResponseWriter, r *http.Request) {
+	limitQuery := r.URL.Query().Get("limit")
+	offsetQuery := r.URL.Query().Get("offset")
+
+	limit, err := strconv.Atoi(limitQuery)
+	if err != nil {
+		limit = 20
+	}
+
+	offset, err := strconv.Atoi(offsetQuery)
+	if err != nil {
+		offset = 0
+	}
+
 	db, err := middlewares.GetDB(r)
 	if err != nil {
 		handlers.SendError(w, http.StatusInternalServerError, "Some troubles with db")
@@ -48,14 +68,18 @@ func getSensors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sensors, err := db.GetSensors(middlewares.GetAuthToken(r))
+	sensors, total, err := db.GetSensors(middlewares.GetAuthToken(r), limit, offset)
 	if err != nil {
+		slog.Error("failed to get sensors", "error", err)
 		handlers.SendError(w, http.StatusInternalServerError, "Some troubles with db")
 
 		return
 	}
 
-	handlers.SendJSON(w, http.StatusOK, sensors)
+	handlers.SendJSON(w, http.StatusOK, sensorsResponse{
+		Total: total,
+		Data:  sensors,
+	})
 }
 
 func getSensorTelemetry(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +116,7 @@ func getSensorTelemetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := telemetryResp{
+	resp := telemetryResponse{
 		Total: total,
 		Data:  telemetry,
 	}

@@ -3,11 +3,13 @@ package database
 import (
 	"fmt"
 	"log/slog"
+	"time"
 )
 
 type Sensor struct {
-	ID   int
-	Name string
+	ID            int        `json:"sensorId"`
+	Name          string     `json:"name"`
+	LastTelemetry *Telemetry `json:"lastTelemetry"`
 }
 
 func (db *DB) createSensorTable() error {
@@ -44,22 +46,6 @@ func (db *DB) NewSensor(name, token string, id int) error {
 	return nil
 }
 
-func (db *DB) ChangeSensorName(id int, name string) error {
-	ctx, cancel := timeoutContext()
-	defer cancel()
-
-	_, err := db.db.ExecContext(ctx, `
-		UPDATE sensors
-			SET name = ?
-			WHERE id = ?
-	`, name, id)
-	if err != nil {
-		return fmt.Errorf("failed to change sensor name: %w", err)
-	}
-
-	return nil
-}
-
 func (db *DB) DeleteSensor(id int) error {
 	ctx, cancel := timeoutContext()
 	defer cancel()
@@ -75,17 +61,50 @@ func (db *DB) DeleteSensor(id int) error {
 	return nil
 }
 
-func (db *DB) GetSensors(token string) ([]Sensor, error) {
+func (db *DB) GetSensorsCount(token string) (int, error) {
+	ctx, cancel := timeoutContext()
+	defer cancel()
+
+	var count int
+	err := db.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+			FROM sensors
+			WHERE owner_token = ?
+	`, token).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get sensor count: %w", err)
+	}
+
+	return count, nil
+}
+
+func (db *DB) GetSensors(token string, limit int, offset int) ([]Sensor, int, error) {
 	ctx, cancel := timeoutContext()
 	defer cancel()
 
 	rows, err := db.db.QueryContext(ctx, `
-		SELECT id, name
-		FROM sensors
-		WHERE owner_token = ?
-	`, token)
+	WITH ranked_telemetry AS (
+	    SELECT
+	        sensor_id,
+	        try,
+	        timestamp,
+	        value,
+	        ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY timestamp DESC) as rn
+	    FROM telemetry
+		)
+	SELECT
+	    s.id,
+	    s.name,
+	    t.timestamp,
+	    t.try,
+	    t.value
+			FROM sensors s
+	LEFT JOIN ranked_telemetry t ON t.sensor_id = s.id AND t.rn = 1
+		WHERE s.owner_token = ?
+		LIMIT ? OFFSET ?
+	`, token, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sensors: %w", err)
+		return nil, 0, fmt.Errorf("failed to get sensors: %w", err)
 	}
 
 	defer func() {
@@ -100,20 +119,41 @@ func (db *DB) GetSensors(token string) ([]Sensor, error) {
 	for rows.Next() {
 		var sensor Sensor
 
-		err := rows.Scan(&sensor.ID, &sensor.Name)
+		var (
+			telemetryTime  *time.Time
+			telemetryTry   *int
+			telemetryValue *int
+		)
+
+		err := rows.Scan(
+			&sensor.ID, &sensor.Name,
+			&telemetryTime, &telemetryTry, &telemetryValue,
+		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan sensor: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan sensor: %w", err)
 		}
 
+		if telemetryValue != nil {
+			sensor.LastTelemetry = &Telemetry{
+				SensorID:  sensor.ID,
+				Timestamp: *telemetryTime,
+				Try:       *telemetryTry,
+				Value:     *telemetryValue,
+			}
+		}
 		sensors = append(sensors, sensor)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		return nil, fmt.Errorf("failed to iterate sensors: %w", err)
+		return nil, 0, fmt.Errorf("failed to iterate sensors: %w", err)
 	}
 
-	return sensors, nil
+	sensorCount, err := db.GetSensorsCount(token)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get sensor count: %w", err)
+	}
+	return sensors, sensorCount, nil
 }
 
 func (db *DB) UpdateSensor(id int, name string) error {

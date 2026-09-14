@@ -7,11 +7,12 @@ import (
 )
 
 type Telemetry struct {
-	ID        int       `json:"id"`
-	SensorID  int       `json:"sensor_id"`
+	ID        int       `json:"-"`
+	SensorID  int       `json:"sensorId"`
 	Timestamp time.Time `json:"timestamp"`
-	Try       int       `json:"try"`
-	Token     string    `json:"token"`
+	Try       int       `json:"tryNumber"`
+	Value     int       `json:"value"`
+	Token     string    `json:"-"`
 }
 
 func (db *DB) createTelemetryTable() error {
@@ -24,6 +25,7 @@ func (db *DB) createTelemetryTable() error {
 			sensor_id INTEGER,
 			timestamp DATETIME,
 			try INTEGER,
+			value REAL,
 			token TEXT
 		);
 	`)
@@ -34,13 +36,13 @@ func (db *DB) createTelemetryTable() error {
 	return nil
 }
 
-func (db *DB) NewTelemetry(sensorID int, try int, timestamp time.Time, token string) error {
-	query := `INSERT INTO telemetry (sensor_id, try, timestamp, token) VALUES (?, ?, ?, ?)`
+func (db *DB) NewTelemetry(sensorID int, try int, timestamp time.Time, value int, token string) error {
+	query := `INSERT INTO telemetry (sensor_id, try, timestamp, value, token) VALUES (?, ?, ?, ?, ?)`
 
 	ctx, cancel := timeoutContext()
 	defer cancel()
 
-	_, err := db.db.ExecContext(ctx, query, sensorID, try, timestamp.UTC(), token)
+	_, err := db.db.ExecContext(ctx, query, sensorID, try, timestamp.UTC(), value, token)
 	if err != nil {
 		return fmt.Errorf("exec error: %w", err)
 	}
@@ -88,7 +90,7 @@ func (db *DB) getTelemetryCount(token string) (int, error) {
 
 func (db *DB) GetTelemetry(token string, limit int, offset int) ([]Telemetry, int, error) {
 	query := `
-		SELECT id, sensor_id, timestamp, try, token
+		SELECT id, sensor_id, timestamp, try, token, value
 		FROM telemetry
 		WHERE sensor_id IN (SELECT id FROM sensors WHERE owner_token = ?)
 		ORDER BY timestamp DESC
@@ -114,7 +116,7 @@ func (db *DB) GetTelemetry(token string, limit int, offset int) ([]Telemetry, in
 	for rows.Next() {
 		var ping Telemetry
 
-		err := rows.Scan(&ping.ID, &ping.SensorID, &ping.Timestamp, &ping.Try, &ping.Token)
+		err := rows.Scan(&ping.ID, &ping.SensorID, &ping.Timestamp, &ping.Try, &ping.Token, &ping.Value)
 		if err != nil {
 			return nil, 0, fmt.Errorf("scan error: %w", err)
 		}
@@ -175,7 +177,7 @@ func (db *DB) getSensorTelemetryCount(token string, sensorID int) (int, error) {
 
 func (db *DB) GetSensorTelemetry(token string, sensorID int, limit int, offset int) ([]Telemetry, int, error) {
 	query := `
-		SELECT id, sensor_id, timestamp, try, token
+		SELECT id, sensor_id, timestamp, try, token, value
 		FROM telemetry
 		WHERE sensor_id IN (SELECT id FROM sensors WHERE owner_token = ?) AND sensor_id = ?
 		ORDER BY timestamp DESC
@@ -201,7 +203,7 @@ func (db *DB) GetSensorTelemetry(token string, sensorID int, limit int, offset i
 	for rows.Next() {
 		var ping Telemetry
 
-		err := rows.Scan(&ping.ID, &ping.SensorID, &ping.Timestamp, &ping.Try, &ping.Token)
+		err := rows.Scan(&ping.ID, &ping.SensorID, &ping.Timestamp, &ping.Try, &ping.Token, &ping.Value)
 		if err != nil {
 			return nil, 0, fmt.Errorf("scan error: %w", err)
 		}

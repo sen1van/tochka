@@ -4,7 +4,7 @@ import "net/http"
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("Authorization")
+		token := GetAuthToken(r)
 		if token == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 
@@ -16,5 +16,5 @@ func AuthMiddleware(next http.Handler) http.Handler {
 }
 
 func GetAuthToken(r *http.Request) string {
-	return r.Header.Get("Authorization")
+	return r.Header.Get("X-API-Token")
 }
