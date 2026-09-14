@@ -24,11 +24,6 @@ useHead({
   meta: [{ name: 'theme-color', content: '#ffffff' }]
 })
 
-const sensorColumns = [
-  { accessorKey: 'name', header: 'Name' },
-  { accessorKey: 'sensorId', header: 'ID' },
-  { accessorKey: 'lastSeen', header: 'Last seen' }
-]
 const telemetryColumns = [
   { accessorKey: 'sensorId', header: 'Sensor' },
   { accessorKey: 'value', header: 'Value' },
@@ -36,7 +31,6 @@ const telemetryColumns = [
   { accessorKey: 'timestamp', header: 'Timestamp' }
 ]
 
-const formattedSensors = computed(() => sensors.value.map(sensor => ({ ...sensor, lastSeen: formatDate(sensor.lastSeen) })))
 const formattedTelemetry = computed(() => telemetry.value.map(reading => ({ ...reading, timestamp: formatDate(reading.timestamp) })))
 
 function formatDate(value: string) {
