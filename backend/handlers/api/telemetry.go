@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -42,7 +43,11 @@ func postTelemetry(w http.ResponseWriter, r *http.Request) {
 		*telemetry.Value,
 		middlewares.GetAuthToken(r))
 	if err != nil {
-		handlers.SendError(w, http.StatusInternalServerError, err.Error())
+		if errors.Is(err, database.ErrNoRowAffected) {
+			handlers.SendError(w, http.StatusNotFound, err.Error())
+		} else {
+			handlers.SendError(w, http.StatusInternalServerError, err.Error())
+		}
 
 		return
 	}
@@ -56,12 +61,42 @@ func getTelemetry(w http.ResponseWriter, r *http.Request) {
 
 	limit, err := strconv.Atoi(limitQuery)
 	if err != nil {
+		if errors.Is(err, strconv.ErrSyntax) {
+			handlers.SendError(w, http.StatusBadRequest, "limit must be a number")
+
+			return
+		}
+
 		limit = 20
 	}
 
 	offset, err := strconv.Atoi(offsetQuery)
 	if err != nil {
+		if errors.Is(err, strconv.ErrSyntax) {
+			handlers.SendError(w, http.StatusBadRequest, "offset must be a number")
+
+			return
+		}
+
 		offset = 0
+	}
+
+	if limit > maxLimit {
+		handlers.SendError(w, http.StatusBadRequest, "Limit must be less than 100")
+
+		return
+	}
+
+	if limit == 0 {
+		handlers.SendError(w, http.StatusBadRequest, "Limit must be greater than 0")
+
+		return
+	}
+
+	if limit < 0 || offset < 0 {
+		handlers.SendError(w, http.StatusBadRequest, "Limit and offset must be non-negative")
+
+		return
 	}
 
 	db, err := middlewares.GetDB(r)

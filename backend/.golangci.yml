@@ -30,8 +30,8 @@ linters:
       tagliatelle:
         case:
           rules:
-            json: snake
-            yaml: snake
+            json: camel
+            yaml: camel
             env: upperSnake
       revive:
         rules:

@@ -10,5 +10,5 @@ using Http;
 @service(#{ title: "tochka" })
 @server("https://example.try", "Server")
 @route("/api")
-@useAuth(ApiKeyAuth<ApiKeyLocation.header, "X-API-Token">)
+@useAuth(ApiKeyAuth<ApiKeyLocation.header, "X-Api-Token">)
 namespace tochka;

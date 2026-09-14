@@ -2,6 +2,7 @@ import "@typespec/http";
 
 import "../models/errors.tsp";
 import "../models/telemetry.tsp";
+import "../models/utils.tsp";
 
 namespace tochka;
 
@@ -12,12 +13,11 @@ using Http;
 interface Telemetry {
   @doc("create a new telemetry stamp")
   @post newTelemetryStamp(
-    @body data: TelemetryData[]
-  ): {@statusCode statusCode: 201} | ErrorBadRequest;
+    @body data: TelemetryData
+  ): {@statusCode statusCode: 201} | ErrorBadRequest | ErrorNotFound;
 
   @doc("get telemetry from all sensors")
   @get getAllTelemetry(
-    @query limit: int64,
-    @query offset: int64
+    @query query: PaginationQuery
   ): TelemetryResponse;
 }

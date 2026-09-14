@@ -15,7 +15,7 @@ func GetApiHandler() http.Handler {
 	handler.HandleFunc("GET /sensors/{id}/telemetry", getSensorTelemetry)
 	handler.HandleFunc("POST /sensors", postSensor)
 	handler.HandleFunc("GET /sensors", getSensors)
-	handler.HandleFunc("PUT /sensors/{id}", updateSensor)
+	handler.HandleFunc("PATCH /sensors/{id}", updateSensor)
 	handler.HandleFunc("DELETE /sensors/{id}", deleteSensor)
 
 	return handler

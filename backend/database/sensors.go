@@ -18,7 +18,7 @@ func (db *DB) createSensorTable() error {
 
 	_, err := db.db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS sensors (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			id INTEGER PRIMARY KEY,
 			name TEXT,
 			owner_token TEXT
 		);
@@ -34,28 +34,46 @@ func (db *DB) NewSensor(name, token string, id int) error {
 	ctx, cancel := timeoutContext()
 	defer cancel()
 
-	_, err := db.db.ExecContext(ctx, `
+	result, err := db.db.ExecContext(ctx, `
 		INSERT INTO sensors (id, name, owner_token)
 			VALUES (?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET name = ?, owner_token = ?;
-	`, id, name, token, name, token)
+		ON CONFLICT(id) DO NOTHING;
+	`, id, name, token)
 	if err != nil {
 		return fmt.Errorf("failed to create sensor owner: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNoRowAffected
 	}
 
 	return nil
 }
 
-func (db *DB) DeleteSensor(id int) error {
+func (db *DB) DeleteSensor(token string, id int) error {
 	ctx, cancel := timeoutContext()
 	defer cancel()
 
-	_, err := db.db.ExecContext(ctx, `
+	result, err := db.db.ExecContext(ctx, `
 		DELETE FROM sensors
-			WHERE id = ?
-	`, id)
+			WHERE id = ? AND owner_token = ?
+	`, id, token)
 	if err != nil {
 		return fmt.Errorf("failed to delete sensor: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNoRowAffected
 	}
 
 	return nil
@@ -66,6 +84,7 @@ func (db *DB) GetSensorsCount(token string) (int, error) {
 	defer cancel()
 
 	var count int
+
 	err := db.db.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 			FROM sensors
@@ -78,33 +97,25 @@ func (db *DB) GetSensorsCount(token string) (int, error) {
 	return count, nil
 }
 
-func (db *DB) GetSensors(token string, limit int, offset int) ([]Sensor, int, error) {
+func (db *DB) GetSensors(token string) ([]Sensor, error) { //nolint:funlen
 	ctx, cancel := timeoutContext()
 	defer cancel()
 
 	rows, err := db.db.QueryContext(ctx, `
 	WITH ranked_telemetry AS (
-	    SELECT
-	        sensor_id,
-	        try,
-	        timestamp,
-	        value,
+	    SELECT sensor_id, try, timestamp, value,
 	        ROW_NUMBER() OVER (PARTITION BY sensor_id ORDER BY timestamp DESC) as rn
 	    FROM telemetry
-		)
+		WHERE sensor_id IN (SELECT id FROM sensors WHERE owner_token = ?)
+	)
 	SELECT
-	    s.id,
-	    s.name,
-	    t.timestamp,
-	    t.try,
-	    t.value
-			FROM sensors s
+	    s.id, s.name,
+	    t.timestamp, t.try, t.value FROM sensors s
 	LEFT JOIN ranked_telemetry t ON t.sensor_id = s.id AND t.rn = 1
 		WHERE s.owner_token = ?
-		LIMIT ? OFFSET ?
-	`, token, limit, offset)
+	`, token, token)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get sensors: %w", err)
+		return nil, fmt.Errorf("failed to get sensors: %w", err)
 	}
 
 	defer func() {
@@ -130,7 +141,7 @@ func (db *DB) GetSensors(token string, limit int, offset int) ([]Sensor, int, er
 			&telemetryTime, &telemetryTry, &telemetryValue,
 		)
 		if err != nil {
-			return nil, 0, fmt.Errorf("failed to scan sensor: %w", err)
+			return nil, fmt.Errorf("failed to scan sensor: %w", err)
 		}
 
 		if telemetryValue != nil {
@@ -141,32 +152,38 @@ func (db *DB) GetSensors(token string, limit int, offset int) ([]Sensor, int, er
 				Value:     *telemetryValue,
 			}
 		}
+
 		sensors = append(sensors, sensor)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to iterate sensors: %w", err)
+		return nil, fmt.Errorf("failed to iterate sensors: %w", err)
 	}
 
-	sensorCount, err := db.GetSensorsCount(token)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get sensor count: %w", err)
-	}
-	return sensors, sensorCount, nil
+	return sensors, nil
 }
 
-func (db *DB) UpdateSensor(id int, name string) error {
+func (db *DB) UpdateSensor(token string, id int, name string) error {
 	ctx, cancel := timeoutContext()
 	defer cancel()
 
-	_, err := db.db.ExecContext(ctx, `
+	result, err := db.db.ExecContext(ctx, `
 		UPDATE sensors
 			SET name = ?
-			WHERE id = ?
-	`, name, id)
+			WHERE id = ? AND owner_token = ?
+	`, name, id, token)
 	if err != nil {
 		return fmt.Errorf("failed to update sensor: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrNoRowAffected
 	}
 
 	return nil

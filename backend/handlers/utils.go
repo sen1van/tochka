@@ -44,6 +44,12 @@ func IsUnknownFieldError(err error) (string, bool) {
 }
 
 func SendJSON(w http.ResponseWriter, status int, data any) {
+	if status == http.StatusNoContent {
+		w.WriteHeader(status)
+
+		return
+	}
+
 	bytes, err := json.Marshal(data)
 	if err != nil {
 		slog.Error("failed to encode JSON", "error", err)
@@ -66,7 +72,7 @@ func SendJSON(w http.ResponseWriter, status int, data any) {
 }
 
 func SendError(w http.ResponseWriter, status int, message string) {
-	SendJSON(w, status, map[string]string{"error": message})
+	SendJSON(w, status, map[string]string{"message": message})
 }
 
 func validateFields(dst any) error {

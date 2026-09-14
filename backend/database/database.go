@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -11,6 +12,10 @@ import (
 
 const (
 	defaultTimeout = 5 * time.Second
+)
+
+var (
+	ErrNoRowAffected = errors.New("no row affected")
 )
 
 type DB struct {
@@ -39,7 +44,10 @@ func NewDB(link string) *DB {
 }
 
 func (d *DB) Close() {
-	slog.Error("closing database", "error", d.db.Close())
+	err := d.db.Close()
+	if err != nil {
+		slog.Error("failed to close database", "error", err)
+	}
 }
 
 func timeoutContext() (context.Context, context.CancelFunc) {

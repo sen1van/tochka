@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -8,6 +9,8 @@ import (
 	"tochka/handlers"
 	"tochka/middlewares"
 )
+
+const maxLimit = 100
 
 type newSensorRequest struct {
 	SensorID *int    `json:"sensorId" required:"true"`
@@ -39,6 +42,12 @@ func postSensor(w http.ResponseWriter, r *http.Request) {
 
 	err = db.NewSensor(*req.Name, middlewares.GetAuthToken(r), *req.SensorID)
 	if err != nil {
+		if errors.Is(err, database.ErrNoRowAffected) {
+			handlers.SendError(w, http.StatusConflict, "Sensor already exists")
+
+			return
+		}
+
 		handlers.SendError(w, http.StatusInternalServerError, "Some troubles with db")
 
 		return
@@ -48,19 +57,6 @@ func postSensor(w http.ResponseWriter, r *http.Request) {
 }
 
 func getSensors(w http.ResponseWriter, r *http.Request) {
-	limitQuery := r.URL.Query().Get("limit")
-	offsetQuery := r.URL.Query().Get("offset")
-
-	limit, err := strconv.Atoi(limitQuery)
-	if err != nil {
-		limit = 20
-	}
-
-	offset, err := strconv.Atoi(offsetQuery)
-	if err != nil {
-		offset = 0
-	}
-
 	db, err := middlewares.GetDB(r)
 	if err != nil {
 		handlers.SendError(w, http.StatusInternalServerError, "Some troubles with db")
@@ -68,7 +64,7 @@ func getSensors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sensors, total, err := db.GetSensors(middlewares.GetAuthToken(r), limit, offset)
+	sensors, err := db.GetSensors(middlewares.GetAuthToken(r))
 	if err != nil {
 		slog.Error("failed to get sensors", "error", err)
 		handlers.SendError(w, http.StatusInternalServerError, "Some troubles with db")
@@ -77,7 +73,7 @@ func getSensors(w http.ResponseWriter, r *http.Request) {
 	}
 
 	handlers.SendJSON(w, http.StatusOK, sensorsResponse{
-		Total: total,
+		Total: len(sensors),
 		Data:  sensors,
 	})
 }
@@ -89,17 +85,49 @@ func getSensorTelemetry(w http.ResponseWriter, r *http.Request) {
 
 	limit, err := strconv.Atoi(limitQuery)
 	if err != nil {
+		if errors.Is(err, strconv.ErrSyntax) {
+			handlers.SendError(w, http.StatusBadRequest, "limit must be a number")
+
+			return
+		}
+
 		limit = 20
 	}
 
 	offset, err := strconv.Atoi(offsetQuery)
 	if err != nil {
+		if errors.Is(err, strconv.ErrSyntax) {
+			handlers.SendError(w, http.StatusBadRequest, "offset must be a number")
+
+			return
+		}
+
 		offset = 0
+	}
+
+	if limit > maxLimit {
+		handlers.SendError(w, http.StatusBadRequest, "Limit must be less than 100")
+
+		return
+	}
+
+	if limit == 0 {
+		handlers.SendError(w, http.StatusBadRequest, "Limit must be greater than 0")
+
+		return
+	}
+
+	if limit < 0 || offset < 0 {
+		handlers.SendError(w, http.StatusBadRequest, "Limit and offset must be non-negative")
+
+		return
 	}
 
 	sensorID, err := strconv.Atoi(sensorIDQuery)
 	if err != nil {
-		sensorID = 0
+		handlers.SendError(w, http.StatusBadRequest, "Invalid sensor ID")
+
+		return
 	}
 
 	db, err := middlewares.GetDB(r)
@@ -154,14 +182,18 @@ func updateSensor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.UpdateSensor(sensorID, *req.Name)
+	err = db.UpdateSensor(middlewares.GetAuthToken(r), sensorID, *req.Name)
 	if err != nil {
-		handlers.SendError(w, http.StatusInternalServerError, "Some troubles with db")
+		if errors.Is(err, database.ErrNoRowAffected) {
+			handlers.SendError(w, http.StatusNotFound, "Sensor not found")
+		} else {
+			handlers.SendError(w, http.StatusInternalServerError, "Some troubles with db")
+		}
 
 		return
 	}
 
-	handlers.SendJSON(w, http.StatusOK, nil)
+	handlers.SendJSON(w, http.StatusNoContent, nil)
 }
 
 func deleteSensor(w http.ResponseWriter, r *http.Request) {
@@ -181,12 +213,16 @@ func deleteSensor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.DeleteSensor(sensorID)
+	err = db.DeleteSensor(middlewares.GetAuthToken(r), sensorID)
 	if err != nil {
-		handlers.SendError(w, http.StatusInternalServerError, "Some troubles with db")
+		if errors.Is(err, database.ErrNoRowAffected) {
+			handlers.SendError(w, http.StatusNotFound, "Sensor not found")
+		} else {
+			handlers.SendError(w, http.StatusInternalServerError, "Some troubles with db")
+		}
 
 		return
 	}
 
-	handlers.SendJSON(w, http.StatusOK, nil)
+	handlers.SendJSON(w, http.StatusNoContent, nil)
 }

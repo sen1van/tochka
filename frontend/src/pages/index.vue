@@ -216,26 +216,192 @@ function signOut() {
 <template>
   <UApp>
     <UContainer class="py-8">
-      <section v-if="screen !== 'dashboard'" class="mx-auto max-w-md py-16">
-        <div class="mb-4 flex justify-end"><UButton to="/openapi" label="API reference" icon="i-lucide-book-open" color="neutral" variant="outline" /></div>
-        <UPageHeader title="Вход в панель" description="Введите токен." class="mb-8" />
-        <UAlert v-if="error" :description="error" color="error" variant="subtle" class="mb-4" />
+      <section
+        v-if="screen !== 'dashboard'"
+        class="mx-auto max-w-md py-16"
+      >
+        <div class="mb-4 flex justify-end">
+          <UButton
+            to="/openapi"
+            label="API reference"
+            icon="i-lucide-book-open"
+            color="neutral"
+            variant="outline"
+          />
+        </div>
+        <UPageHeader
+          title="Вход в панель"
+          description="Введите токен."
+          class="mb-8"
+        />
+        <UAlert
+          v-if="error"
+          :description="error"
+          color="error"
+          variant="subtle"
+          class="mb-4"
+        />
         <UCard>
-          <form class="space-y-4" @submit.prevent="connect">
-            <UFormField label="API token" hint="Sent as X-API-Token"><UInput v-model="token" class="w-full" type="password" placeholder="Enter token" autofocus /></UFormField>
-            <UButton type="submit" block color="neutral" :loading="screen === 'connecting'" :label="screen === 'connecting' ? 'Checking connection…' : 'Вход'" />
+          <form
+            class="space-y-4"
+            @submit.prevent="connect"
+          >
+            <UFormField
+              label="API token"
+              hint="Sent as X-API-Token"
+            >
+              <UInput
+                v-model="token"
+                class="w-full"
+                type="password"
+                placeholder="Enter token"
+                autofocus
+              />
+            </UFormField>
+            <UButton
+              type="submit"
+              block
+              color="neutral"
+              :loading="screen === 'connecting'"
+              :label="screen === 'connecting' ? 'Checking connection…' : 'Вход'"
+            />
           </form>
         </UCard>
       </section>
 
       <template v-else>
-        <div class="mb-8 flex items-end justify-between gap-4"><UPageHeader title="Панель" /><div class="flex gap-2"><UButton to="/openapi" label="API reference" icon="i-lucide-book-open" color="neutral" variant="outline" /><UButton icon="i-lucide-refresh-cw" color="neutral" variant="ghost" aria-label="Refresh" @click="refresh" /><UButton label="Выход" color="neutral" variant="outline" @click="signOut" /></div></div>
-        <UAlert v-if="error" :description="error" color="error" variant="subtle" class="mb-6" />
-        <div class="grid gap-4 md:grid-cols-3"><UCard><p class="text-sm text-muted">Датчики</p><p class="text-3xl font-semibold">{{ sensors.length }}</p></UCard><UCard><p class="text-sm text-muted">Показаний</p><p class="text-3xl font-semibold">{{ telemetry.length }}</p></UCard><UCard><p class="text-sm text-muted">Последний показатель</p><p class="text-3xl font-semibold">{{ telemetry[0]?.value ?? '—' }}</p></UCard></div>
-        <div class="mt-6 grid gap-6 lg:grid-cols-2"><UCard><template #header><div><h2 class="font-semibold">Датчики</h2></div></template><div v-if="sensors.length" class="divide-y divide-default"><button v-for="sensor in sensors" :key="sensor.sensorId" type="button" class="flex w-full items-center justify-between gap-4 px-4 py-4 text-left hover:bg-elevated" @click="showSensorTelemetry(sensor)"><span><span class="block font-medium">{{ sensor.name }}</span><span class="block text-sm text-muted">ID {{ sensor.sensorId }} · {{ formatDate(sensor.lastSeen) }}</span></span><UIcon name="i-lucide-chevron-right" class="text-muted" /></button></div><p v-else class="py-8 text-center text-sm text-muted">Датчики не найдены</p></UCard><UCard><template #header><h2 class="font-semibold">Показания</h2></template><UTable :data="formattedTelemetry" :columns="telemetryColumns" /><p v-if="!telemetry.length" class="py-8 text-center text-sm text-muted">No telemetry found.</p></UCard></div>
+        <div class="mb-8 flex items-end justify-between gap-4">
+          <UPageHeader title="Панель" />
+          <div class="flex gap-2">
+            <UButton
+              to="/openapi"
+              label="API reference"
+              icon="i-lucide-book-open"
+              color="neutral"
+              variant="outline"
+            />
+            <UButton
+              icon="i-lucide-refresh-cw"
+              color="neutral"
+              variant="ghost"
+              aria-label="Refresh"
+              @click="refresh"
+            />
+            <UButton
+              label="Выход"
+              color="neutral"
+              variant="outline"
+              @click="signOut"
+            />
+          </div>
+        </div>
+        <UAlert
+          v-if="error"
+          :description="error"
+          color="error"
+          variant="subtle"
+          class="mb-6"
+        />
+        <div class="grid gap-4 md:grid-cols-3">
+          <UCard>
+            <p class="text-sm text-muted">
+              Датчики
+            </p>
+            <p class="text-3xl font-semibold">
+              {{ sensors.length }}
+            </p>
+          </UCard>
+          <UCard>
+            <p class="text-sm text-muted">
+              Показаний
+            </p>
+            <p class="text-3xl font-semibold">
+              {{ telemetry.length }}
+            </p>
+          </UCard>
+          <UCard>
+            <p class="text-sm text-muted">
+              Последний показатель
+            </p>
+            <p class="text-3xl font-semibold">
+              {{ telemetry[0]?.value ?? '—' }}
+            </p>
+          </UCard>
+        </div>
+        <div class="mt-6 grid gap-6 lg:grid-cols-2">
+          <UCard>
+            <template #header>
+              <div>
+                <h2 class="font-semibold">
+                  Датчики
+                </h2>
+              </div>
+            </template>
+            <div
+              v-if="sensors.length"
+              class="divide-y divide-default"
+            >
+              <button
+                v-for="sensor in sensors"
+                :key="sensor.sensorId"
+                type="button"
+                class="flex w-full items-center justify-between gap-4 px-4 py-4 text-left hover:bg-elevated"
+                @click="showSensorTelemetry(sensor)"
+              >
+                <span>
+                  <span class="block font-medium">{{ sensor.name }}</span>
+                  <span class="block text-sm text-muted">ID {{ sensor.sensorId }} · {{ formatDate(sensor.lastSeen) }}</span>
+                </span>
+                <UIcon
+                  name="i-lucide-chevron-right"
+                  class="text-muted"
+                />
+              </button>
+            </div>
+            <p
+              v-else
+              class="py-8 text-center text-sm text-muted"
+            >
+              Датчики не найдены
+            </p>
+          </UCard>
+          <UCard>
+            <template #header>
+              <h2 class="font-semibold">
+                Показания
+              </h2>
+            </template>
+            <UTable
+              :data="formattedTelemetry"
+              :columns="telemetryColumns"
+            />
+            <p
+              v-if="!telemetry.length"
+              class="py-8 text-center text-sm text-muted"
+            >
+              No telemetry found.
+            </p>
+          </UCard>
+        </div>
       </template>
 
-      <UModal v-model:open="showTelemetryModal" :title="selectedSensor ? `${selectedSensor.name} telemetry` : 'Sensor telemetry'"><template #body><UTable :data="selectedTelemetry.map(reading => ({ ...reading, timestamp: formatDate(reading.timestamp) }))" :columns="telemetryColumns" /><p v-if="!selectedTelemetry.length" class="py-8 text-center text-sm text-muted">Телеметрия не найдена</p></template></UModal>
+      <UModal
+        v-model:open="showTelemetryModal"
+        :title="selectedSensor ? `${selectedSensor.name} telemetry` : 'Sensor telemetry'"
+      >
+        <template #body>
+          <UTable
+            :data="selectedTelemetry.map(reading => ({ ...reading, timestamp: formatDate(reading.timestamp) }))"
+            :columns="telemetryColumns"
+          />
+          <p
+            v-if="!selectedTelemetry.length"
+            class="py-8 text-center text-sm text-muted"
+          >
+            Телеметрия не найдена
+          </p>
+        </template>
+      </UModal>
     </UContainer>
   </UApp>
 </template>
