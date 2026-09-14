@@ -38,12 +38,3 @@ linters:
           - name: exported
             severity: warning
             disabled: true
-
-  formatters:
-    enable:
-      - gci
-      - gofmt
-      - gofumpt
-      - goimports
-      - golines
-      - swaggo

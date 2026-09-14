@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"time"
 	"tochka/database"
 	"tochka/handlers"
@@ -56,45 +55,13 @@ func postTelemetry(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTelemetry(w http.ResponseWriter, r *http.Request) {
-	limitQuery := r.URL.Query().Get("limit")
-	offsetQuery := r.URL.Query().Get("offset")
-
-	limit, err := strconv.Atoi(limitQuery)
+	limit, offset, err := pagination(r)
 	if err != nil {
-		if errors.Is(err, strconv.ErrSyntax) {
-			handlers.SendError(w, http.StatusBadRequest, "limit must be a number")
-
-			return
+		if errors.Is(err, ErrPagination) {
+			handlers.SendError(w, http.StatusBadRequest, err.Error())
+		} else {
+			handlers.SendError(w, http.StatusInternalServerError, "Pagination issue")
 		}
-
-		limit = 20
-	}
-
-	offset, err := strconv.Atoi(offsetQuery)
-	if err != nil {
-		if errors.Is(err, strconv.ErrSyntax) {
-			handlers.SendError(w, http.StatusBadRequest, "offset must be a number")
-
-			return
-		}
-
-		offset = 0
-	}
-
-	if limit > maxLimit {
-		handlers.SendError(w, http.StatusBadRequest, "Limit must be less than 100")
-
-		return
-	}
-
-	if limit == 0 {
-		handlers.SendError(w, http.StatusBadRequest, "Limit must be greater than 0")
-
-		return
-	}
-
-	if limit < 0 || offset < 0 {
-		handlers.SendError(w, http.StatusBadRequest, "Limit and offset must be non-negative")
 
 		return
 	}
