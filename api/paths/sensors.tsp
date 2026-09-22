@@ -39,5 +39,5 @@ interface Sensors {
   @get getSensorTelemetry(
     @path sensorId: int64,
     @query query: PaginationQuery
-  ): TelemetryResponse;
+  ): TelemetryResponse | ErrorNotFound;
 }

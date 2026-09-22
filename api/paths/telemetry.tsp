@@ -14,7 +14,7 @@ interface Telemetry {
   @doc("create a new telemetry stamp")
   @post newTelemetryStamp(
     @body data: TelemetryData
-  ): {@statusCode statusCode: 201} | ErrorBadRequest | ErrorNotFound;
+  ): {@statusCode statusCode: 201} | ErrorBadRequest;
 
   @doc("get telemetry from all sensors")
   @get getAllTelemetry(
